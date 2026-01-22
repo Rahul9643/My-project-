@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Guessing Game</title>
+    <style>
+        /* Base styles with gradient background */
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
+        }
+        .game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            animation: fadeIn 1s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 {
+            color: #007bff;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .word-display {
+            font-size: 2.5em;
+            letter-spacing: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #333;
+        }
+        .letter {
+            display: inline-block;
+            width: 40px;
+            height: 50px;
+            line-height: 50px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin: 0 2px;
+            transition: all 0.5s ease;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        .letter.revealed {
+            opacity: 1;
+            transform: scale(1);
+            background: #90ee90;
+            animation: pop 0.5s ease;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .info {
+            font-size: 1.2em;
+            margin: 20px 0;
+        }
+        input {
+            padding: 10px;
+            font-size: 1.5em;
+            width: 60px;
+            text-align: center;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            margin: 10px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #0056b3;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            background: #0056b3;
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .message {
+            font-size: 1.5em;
+            margin: 20px 0;
+            opacity: 0;
+            transition: opacity 0.5s;
+            min-height: 50px;
+        }
+        .message.show {
+            opacity: 1;
+        }
+        .shake {
+            animation: shake 0.5s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .typewriter {
+            overflow: hidden;
+            border-right: 2px solid #007bff;
+            white-space: nowrap;
+            animation: typing 2s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #007bff; }
+        }
+        .confetti {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff6b6b;
+            animation: fall 3s linear infinite;
+        }
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        /* Media Queries */
+        @media (max-width: 768px) {
+            .game-container { padding: 20px; }
+            h1 { font-size: 2em; }
+            .word-display { font-size: 2em; letter-spacing: 5px; }
+            .letter { width: 30px; height: 40px; line-height: 40px; }
+            input { width: 50px; }
+        }
+        @media (max-width: 480px) {
+            h1 { font-size: 1.5em; }
+            .word-display { font-size: 1.5em; }
+            .letter { width: 25px; height: 35px; line-height: 35px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Word Guessing Game</h1>
+        <div class="info" id="info">Word Length: <span id="word-length"></span> | Attempts Left: <span id="attempts">3</span></div>
+        <div class="word-display" id="word-display"></div>
+        <input type="text" id="guess-input" maxlength="1" placeholder="Guess">
+        <button id="guess-btn">Guess</button>
+        <button id="restart-btn">New Game</button>
+        <div class="message" id="message"></div>
+        <div class="confetti" id="confetti"></div>
+    </div>
+
+    <script>
+        const words = ["JAVA", "CODE", "GAME", "LOOP", "DATA", "RAHUL", "GITHUB"]; // From Java code
+        let selectedWord = '';
+        let guessed = [];
+        let wrong = 0;
+        let maxWrong = 3;
+
+        const wordDisplay = document.getElementById('word-display');
+        const info = document.getElementById('info');
+        const wordLengthSpan = document.getElementById('word-length');
+        const attemptsSpan = document.getElementById('attempts');
+        const guessInput = document.getElementById('guess-input');
+        const guessBtn = document.getElementById('guess-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const message = document.getElementById('message');
+        const confetti = document.getElementById('confetti');
+
+        function initGame() {
+            selectedWord = words[Math.floor(Math.random() * words.length)]; // Random word
+            guessed = new Array(selectedWord.length).fill('_');
+            wrong = 0;
+            updateDisplay();
+            message.textContent = '';
+            message.classList.remove('show', 'typewriter');
+            guessInput.value = '';
+            guessInput.focus();
+            clearConfetti();
+        }
+
+        function updateDisplay() {
+            wordDisplay.innerHTML = '';
+            guessed.forEach((char, index) => {
+                const letterDiv = document.createElement('div');
+                letterDiv.className = 'letter';
+                letterDiv.textContent = char;
+                if (char !== '_') letterDiv.classList.add('revealed');
+                wordDisplay.appendChild(letterDiv);
+            });
+            wordLengthSpan.textContent = selectedWord.length;
+            attemptsSpan.textContent = maxWrong - wrong;
+        }
+
+        function checkGuess() {
+            const letter = guessInput.value.toUpperCase();
+            if (!letter || guessed.includes(letter)) {
+                guessInput.classList.add('shake');
+                setTimeout(() => guessInput.classList.remove('shake'), 500);
+                return;
+            }
+
+            let found = false;
+            for (let i = 0; i < selectedWord.length; i++) {
+                if (selectedWord[i] === letter && guessed[i] === '_') {
+                    guessed[i] = letter;
+                    found = true;
+                }
+            }
+
+            if (!found) {
+                wrong++;
+                guessBtn.classList.add('shake');
+                setTimeout(() => guessBtn.classList.remove('shake'), 500);
+            }
+
+            updateDisplay();
+
+            if (guessed.every(char => char !== '_')) {
+                message.textContent = `🎉 WORD GUESSED: ${selectedWord}`;
+                message.classList.add('show', 'typewriter');
+                showConfetti();
+                guessBtn.disabled = true;
+            } else if (wrong >= maxWrong) {
+                message.textContent = `💀 GAME OVER! Word was: ${selectedWord}`;
+                message.classList.add('show', 'typewriter');
+                guessBtn.disabled = true;
+            }
+
+            guessInput.value = '';
+        }
+
+        function showConfetti() {
+            for (let i = 0; i < 50; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.left = Math.random() * 100 + '%';
+                piece.style.animationDelay = Math.random() * 3 + 's';
+                confetti.appendChild(piece);
+            }
+        }
+
+        function clearConfetti() {
+            confetti.innerHTML = '';
+        }
+
+        guessBtn.addEventListener('click', checkGuess);
+        restartBtn.addEventListener('click', () => {
+            guessBtn.disabled = false;
+            initGame();
+        });
+        guessInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkGuess();
+        });
+
+        initGame(); // Start game
+    </script>
+</body>
+</html>
